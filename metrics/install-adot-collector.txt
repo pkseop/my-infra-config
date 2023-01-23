@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# 설치 참조
+# https://aws-otel.github.io/docs/getting-started/container-insights/eks-fargate
+
+# 1. 설정 클러스터로 연결 변경
+eksctl utils write-kubeconfig --cluster={{cludstername}}
+
+# 2. Create namespace
+kubectl create namespace fargate-container-insights
+
+# 3. fargate profile 생성
+eksctl create fargateprofile \
+    --cluster {{clustername}} \
+    --name fp-fargate-container-insights \
+    --namespace fargate-container-insights
+
+# 4. IRSA(IAM Role for Service Account) 생성
+sh createIRSA.sh
+
+# 5. Create EFS & Access point in aws console
+
+# 6. Create persistent volume with EFS
+kubectl apply -f adot-collector-pv.yaml
+
+# 7. Upload 'adot-collector-config.yaml' file to EFS. - You can access EFS directory by mounting EFS at a ec2 instance
+
+# 8. Install adot-collector
+kubectl apply -f otel-fargate-container-insights.yaml

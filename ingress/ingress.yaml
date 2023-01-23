@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: real-grip-cloud-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: alb 
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/security-groups: {{security group id}}
+    alb.ingress.kubernetes.io/subnets: {{subnet id}}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}, {"HTTP":80}]'
+    alb.ingress.kubernetes.io/certificate-arn: {{certificate arn}}
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+spec:
+  rules:
+  - host: test1.my.com
+    http: &test1
+      paths:
+      - path: "/"
+        pathType: Prefix
+        backend:
+          service:
+            name: test1-svc
+            port: 
+              number: 8070
+  - host: test2.my.com
+    http: *test1
+  - host: test3.my.com
+    http: *test1

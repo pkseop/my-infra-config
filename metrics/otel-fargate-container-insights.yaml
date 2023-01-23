@@ -1,0 +1,123 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: adotcol-admin-role
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/proxy
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+      - pods/proxy
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: [ "/metrics/cadvisor"]
+    verbs: ["get", "list", "watch"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: adotcol-admin-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: adot-collector
+    namespace: fargate-container-insights
+roleRef:
+  kind: ClusterRole
+  name: adotcol-admin-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adot-collector-service
+  namespace: fargate-container-insights
+  labels:
+    app: aws-adot
+    component: adot-collector
+spec:
+  ports:
+    - name: metrics # default endpoint for querying metrics.
+      port: 8888
+    - name: otlp-grpc
+      port: 4317
+    - name: otlp-http
+      port: 55681
+    - name: awsxray
+      port: 2000
+  selector:
+    component: adot-collector
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adot-collector
+  namespace: fargate-container-insights
+  labels:
+    app: aws-adot
+    component: adot-collector
+spec:
+  selector:
+    matchLabels:
+      app: aws-adot
+      component: adot-collector
+  template:
+    metadata:
+      labels:
+        app: aws-adot
+        component: adot-collector
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      serviceAccountName: adot-collector
+      containers:
+        - image: amazon/aws-otel-collector:v0.15.1
+          name: adot-collector
+          imagePullPolicy: Always
+          command:
+            - "/awscollector"
+            - "--config=/conf/adot-collector-config.yaml"
+          env:
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "ClusterName={{clustername}}"
+          resources:
+            limits:
+              cpu: 2
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 400Mi
+          volumeMounts:
+            - name: adot-collector-config-pv
+              mountPath: /conf
+            # - name: adot-collector-config-volume
+            #   mountPath: /conf/adot-collector-config.yaml
+            #   subPath: adot-collector-config.yaml
+      volumes:
+        - name: adot-collector-config-pv
+          persistentVolumeClaim:
+            claimName: adot-collector-efs-claim
+        # - name: adot-collector-config-volume
+        #   configMap:
+        #     name: adot-collector-config
+        #     items:
+        #       - key: adot-collector-config
+        #         path: adot-collector-config.yaml
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: adot-collector-ex-service
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: adot-collector-service.fargate-container-insights.svc.cluster.local

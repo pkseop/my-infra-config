@@ -1,0 +1,5 @@
+eksctl utils write-kubeconfig --cluster={{clustername}}
+
+
+# 로컬에 클러스터 config 업데이트
+aws eks update-kubeconfig --name {{clustername}}

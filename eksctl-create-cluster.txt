@@ -1,0 +1,4 @@
+eksctl create cluster \
+    --name {{clustername}} \
+    --region ap-northeast-2 \
+    --fargate
