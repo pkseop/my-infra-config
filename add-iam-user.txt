@@ -1,0 +1,8 @@
+# IAM 사용자를 eks 클러스터에 추가하기 위한 명령어 정리
+# 추가된 AWS IAM 사용자 계정으로 kubectl 명령어 사용 가능해짐.
+
+# 현재 추가되어 있는 사용자 확인.
+kubectl -n kube-system get cm/aws-auth -o yaml
+
+# IAM 사용자 추가. mapUsers에 추가하면 됨.
+kubectl edit configmap aws-auth --namespace kube-system
